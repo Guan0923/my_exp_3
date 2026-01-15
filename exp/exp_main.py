@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from models import Transformer, PatchTST, PatchTSTwithSequence
-from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
+from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop, compute_loss
 from utils.metrics import metric
 
 import numpy as np
@@ -65,8 +65,8 @@ class Exp_Main(Exp_Basic):
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if 'Sequence' in self.args.model:
-                            outputs,s = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                        elif 'Linear' in self.args.model or 'TST' in self.args.model:
+                            outputs,s_trend,s_season = self.model(batch_x)
+                        elif 'Linear' in self.args.model or ('TST' in self.args.model and 'Sequence' not in self.args.model):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -75,7 +75,7 @@ class Exp_Main(Exp_Basic):
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
                     if 'Sequence' in self.args.model:
-                        outputs,s = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        outputs,s_trend,s_season = self.model(batch_x)
                     elif 'Linear' in self.args.model or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
                     else:
@@ -146,19 +146,18 @@ class Exp_Main(Exp_Basic):
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if 'Sequence' in self.args.model:
-                            outputs,s = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                        elif 'Linear' in self.args.model or 'TST' in self.args.model:
+                            outputs,s_trend,s_season = self.model(batch_x)
+                        elif 'Linear' in self.args.model or ('TST' in self.args.model and 'Sequence' not in self.args.model):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                        if s is not None:
-                                singular_values = torch.linalg.svdvals(s)
-                                epsilon = 1e-6
-                                log_singular_values = torch.log(torch.clamp_min(singular_values, epsilon))
-                                L_dcs = torch.mean(-2 * torch.sum(log_singular_values,dim = -1))
+                        if s_trend is not None:
+                            L_dcs = compute_loss(s_trend)
+                        if s_season is not None:
+                            L_dcs += compute_loss(s_season)
 
                         f_dim = -1 if self.args.features == 'MS' else 0
                         outputs,loss_s = outputs[:, -self.args.pred_len:, f_dim:]
@@ -167,8 +166,8 @@ class Exp_Main(Exp_Basic):
                         train_loss.append(loss.item())
                 else:
                     if 'Sequence' in self.args.model:
-                            outputs,s = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                    if 'Linear' in self.args.model or 'TST' in self.args.model:
+                            outputs,s_trend,s_season = self.model(batch_x)
+                    elif 'Linear' in self.args.model or 'TST' in self.args.model:
                             outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
@@ -177,11 +176,11 @@ class Exp_Main(Exp_Basic):
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
                     # print(outputs.shape,batch_y.shape)
-                    if s is not None:
-                        singular_values = torch.linalg.svdvals(s)
-                        epsilon = 1e-8
-                        log_singular_values = torch.log(singular_values + epsilon)
-                        L_dcs = -2 * torch.sum(log_singular_values)
+                    if s_trend is not None:
+                        L_dcs = compute_loss(s_trend)
+                    if s_season is not None:
+                        L_dcs += compute_loss(s_season)
+                        
                     f_dim = -1 if self.args.features == 'MS' else 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -260,8 +259,8 @@ class Exp_Main(Exp_Basic):
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if 'Sequence' in self.args.model:
-                            outputs,s = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                        elif 'Linear' in self.args.model or 'TST' in self.args.model:
+                            outputs,s_trend,s_season = self.model(batch_x)
+                        elif 'Linear' in self.args.model or ('TST' in self.args.model and 'Sequence' not in self.args.model):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -270,7 +269,7 @@ class Exp_Main(Exp_Basic):
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
                     if 'Sequence' in self.args.model:
-                            outputs,s = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                            outputs,s_trend,s_season = self.model(batch_x)
                     elif 'Linear' in self.args.model or 'TST' in self.args.model:
                             outputs = self.model(batch_x)
                     else:

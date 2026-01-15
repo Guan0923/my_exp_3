@@ -192,12 +192,15 @@ class Model(nn.Module):
             res_init, trend_init = res_init.permute(0, 2, 1), trend_init.permute(
                 0, 2, 1
             )  # x: [Batch, Channel, Input length]
-            res, loss_s_res = self.model_res(res_init)
-            trend, loss_s_trend = self.model_trend(trend_init)
+            res,s_trend = self.model_res(res_init)
+            trend,s_season = self.model_trend(trend_init)
             x = res + trend
             x = x.permute(0, 2, 1)  # x: [Batch, Input length, Channel]
         else:
             x = x.permute(0, 2, 1)  # x: [Batch, Channel, Input length]
-            x, loss_s = self.model(x)
+            x, s = self.model(x)
             x = x.permute(0, 2, 1)  # x: [Batch, Input length, Channel]
-        return x, loss_s_res + loss_s_trend
+        if self.decomposition:
+            return x, s_trend , s_season
+        else:
+            return x, s,None

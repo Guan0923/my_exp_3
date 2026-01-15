@@ -36,6 +36,12 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args, printout=True):
             param_group['lr'] = lr
         if printout: print('Updating learning rate to {}'.format(lr))
 
+def compute_loss(s:torch.Tensor):
+    singular_values = torch.linalg.svdvals(s)
+    epsilon = 1e-6
+    log_singular_values = torch.log(torch.clamp_min(singular_values, epsilon))
+    L_dcs = torch.mean(-2 * torch.sum(log_singular_values,dim = -1))
+    return L_dcs
 
 class EarlyStopping:
     def __init__(self, patience=7, verbose=False, delta=0):
@@ -44,7 +50,7 @@ class EarlyStopping:
         self.counter = 0
         self.best_score = None
         self.early_stop = False
-        self.val_loss_min = np.Inf
+        self.val_loss_min = np.inf
         self.delta = delta
 
     def __call__(self, val_loss, model, path):

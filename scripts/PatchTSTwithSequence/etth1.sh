@@ -5,7 +5,7 @@ fi
 if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
-seq_len=96
+seq_len=384
 model_name=PatchTSTwithSequence
 
 root_path_name=./dataset/
@@ -29,6 +29,7 @@ do
       --pred_len $pred_len \
       --enc_in 7 \
       --k 3 \
+      --lamda 0.1\
       --e_layers 3 \
       --n_heads 4 \
       --d_model 16 \
@@ -40,5 +41,5 @@ do
       --stride 8\
       --des 'Exp' \
       --train_epochs 100\
-      --itr 1 --batch_size 128 --learning_rate 0.0001 >logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log 
+      --itr 1 --batch_size 256 --learning_rate 0.0001 >logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log 
 done

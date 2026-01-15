@@ -75,9 +75,9 @@ class PatchTST_backbone_with_Sequence(nn.Module):
         # Create S
         self.create_method = create_method
         if create_method == "Linear":
-            self.create_s = nn.Linear(self.patch_len, k)
+            self.create_s = nn.Linear(patch_num, k)
         elif create_method == "Conv1d":
-            self.create_s = nn.Conv1d(self.patch_len, k, kernel_size=1)
+            self.create_s = nn.Conv1d(patch_num, k, kernel_size=1)
         elif create_method == "init":
             self.create_s = torch.empty(
                 size=(c_in,self.patch_len, k), requires_grad=True
@@ -116,7 +116,7 @@ class PatchTST_backbone_with_Sequence(nn.Module):
         )
 
         # Head
-        self.head_nf = d_model * patch_num
+        self.head_nf = d_model * (patch_num + k)
         self.n_vars = c_in
         self.pretrain_head = pretrain_head
         self.head_type = head_type
@@ -137,12 +137,6 @@ class PatchTST_backbone_with_Sequence(nn.Module):
             )
 
     def forward(self, z):  # z: [bs x nvars x seq_len]
-        if self.create_method == "init":
-            s = self.create_s.expand(z.shape[0],-1,-1,-1) # s: [bs x nvars x patch_len x k]
-        else:
-            s = self.create_s(z)  # s: [bs x nvars x patch_len x k]
-        s = F.normalize(s, p=2, dim=-2)
-    
         # norm
         if self.revin:
             z = z.permute(0, 2, 1)
@@ -157,6 +151,13 @@ class PatchTST_backbone_with_Sequence(nn.Module):
         )  # z: [bs x nvars x patch_num x patch_len]
         # unfold : 按照指定的窗口大小、步长和填充规则，提取所有可能的局部小块（patches），并将这些小块展平（Flatten）成列向量。
         z = z.permute(0, 1, 3, 2)  # z: [bs x nvars x patch_len x patch_num]
+
+        if self.create_method == "init":
+            s = self.create_s.expand(z.shape[0],-1,-1,-1) # s: [bs x nvars x patch_len x k]
+        else:
+            s = self.create_s(z)  # s: [1 x nvars x patch_len x k]
+        s = F.normalize(s, p=2, dim=-2)
+
         z = torch.cat((z, s), dim=-1)  # z: [bs x nvars x patch_len x patch_num + k]
 
         # model
@@ -246,7 +247,7 @@ class TSTiEncoder(nn.Module):  # i means channel-independent
         self.patch_len = patch_len
 
         # Input encoding
-        q_len = patch_num
+        q_len = patch_num + k
         self.W_P = nn.Linear(
             patch_len, d_model
         )  # Eq 1: projection of feature vectors onto a d-dim vector space
@@ -452,7 +453,7 @@ class TSTEncoderLayer(nn.Module):
         ## Multi-Head attention
         if self.res_attention:
             src2, attn, scores = self.self_attn(
-                src[:, :, :q_len, :],
+                src[:, :self.q_len, :],
                 src,
                 src,
                 prev,
