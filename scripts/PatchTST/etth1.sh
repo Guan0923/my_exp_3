@@ -13,8 +13,8 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-random_seed=2021
-for pred_len in 96 192 336 720
+random_seed=2026
+for pred_len in 96 192
 do
     python -u run_longExp.py \
       --random_seed $random_seed \
@@ -39,5 +39,5 @@ do
       --stride 8\
       --des 'Exp' \
       --train_epochs 100\
-      --itr 1 --batch_size 128 --learning_rate 0.0001 >logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log 
+      --itr 1 --batch_size 256 --learning_rate 0.0001 >logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log 
 done

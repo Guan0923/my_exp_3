@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch import optim
-from torch.optim import lr_scheduler 
+from torch.optim import lr_scheduler
 
 import os
 import time
@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 warnings.filterwarnings('ignore')
+
 
 class Exp_Main(Exp_Basic):
     def __init__(self, args):
@@ -40,7 +41,8 @@ class Exp_Main(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        model_optim = optim.Adam(
+            self.model.parameters(), lr=self.args.learning_rate)
         return model_optim
 
     def _select_criterion(self):
@@ -59,33 +61,40 @@ class Exp_Main(Exp_Basic):
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros_like(
+                    batch_y[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat(
+                    [batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if 'Sequence' in self.args.model:
-                            outputs,s_trend,s_season = self.model(batch_x)
+                            outputs, s_trend, s_season = self.model(batch_x)
                         elif 'Linear' in self.args.model or ('TST' in self.args.model and 'Sequence' not in self.args.model):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
                     if 'Sequence' in self.args.model:
-                        outputs,s_trend,s_season = self.model(batch_x)
+                        outputs, s_trend, s_season = self.model(batch_x)
                     elif 'Linear' in self.args.model or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                batch_y = batch_y[:, -self.args.pred_len:,
+                                  f_dim:].to(self.device)
 
                 pred = outputs.detach().cpu()
                 true = batch_y.detach().cpu()
@@ -109,19 +118,20 @@ class Exp_Main(Exp_Basic):
         time_now = time.time()
 
         train_steps = len(train_loader)
-        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
+        early_stopping = EarlyStopping(
+            patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
-            
-        scheduler = lr_scheduler.OneCycleLR(optimizer = model_optim,
-                                            steps_per_epoch = train_steps,
-                                            pct_start = self.args.pct_start,
-                                            epochs = self.args.train_epochs,
-                                            max_lr = self.args.learning_rate)
+
+        scheduler = lr_scheduler.OneCycleLR(optimizer=model_optim,
+                                            steps_per_epoch=train_steps,
+                                            pct_start=self.args.pct_start,
+                                            epochs=self.args.train_epochs,
+                                            max_lr=self.args.learning_rate)
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
@@ -139,59 +149,74 @@ class Exp_Main(Exp_Basic):
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros_like(
+                    batch_y[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat(
+                    [batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                 # encoder - decoder
+                s_trend, s_season, L_dcs = None, None, None
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if 'Sequence' in self.args.model:
-                            outputs,s_trend,s_season = self.model(batch_x)
+                            outputs, s_trend, s_season = self.model(batch_x)
                         elif 'Linear' in self.args.model or ('TST' in self.args.model and 'Sequence' not in self.args.model):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)
                         if s_trend is not None:
                             L_dcs = compute_loss(s_trend)
                         if s_season is not None:
                             L_dcs += compute_loss(s_season)
 
                         f_dim = -1 if self.args.features == 'MS' else 0
-                        outputs,loss_s = outputs[:, -self.args.pred_len:, f_dim:]
-                        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                        loss = (criterion(outputs, batch_y) + self.args.lamda * L_dcs) if L_dcs is not None else criterion(outputs, batch_y)
+                        outputs, loss_s = outputs[:, -
+                                                  self.args.pred_len:, f_dim:]
+                        batch_y = batch_y[:, -self.args.pred_len:,
+                                          f_dim:].to(self.device)
+                        loss = (criterion(outputs, batch_y) + self.args.lamda *
+                                L_dcs) if L_dcs is not None else criterion(outputs, batch_y)
                         train_loss.append(loss.item())
                 else:
                     if 'Sequence' in self.args.model:
-                            outputs,s_trend,s_season = self.model(batch_x)
+                        outputs, s_trend, s_season = self.model(batch_x)
                     elif 'Linear' in self.args.model or 'TST' in self.args.model:
-                            outputs = self.model(batch_x)
+                        outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                            
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+
                         else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
                     # print(outputs.shape,batch_y.shape)
                     if s_trend is not None:
                         L_dcs = compute_loss(s_trend)
                     if s_season is not None:
                         L_dcs += compute_loss(s_season)
-                        
+
                     f_dim = -1 if self.args.features == 'MS' else 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                    loss = (criterion(outputs, batch_y) + self.args.lamda * L_dcs) if L_dcs is not None else criterion(outputs, batch_y)
+                    batch_y = batch_y[:, -self.args.pred_len:,
+                                      f_dim:].to(self.device)
+                    loss = (criterion(outputs, batch_y) + self.args.lamda *
+                            L_dcs) if L_dcs is not None else criterion(outputs, batch_y)
                     train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
+                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(
+                        i + 1, epoch + 1, loss.item()))
                     speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                    left_time = speed * \
+                        ((self.args.train_epochs - epoch) * train_steps - i)
+                    print(
+                        '\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()
 
@@ -202,12 +227,14 @@ class Exp_Main(Exp_Basic):
                 else:
                     loss.backward()
                     model_optim.step()
-                    
+
                 if self.args.lradj == 'TST':
-                    adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, printout=False)
+                    adjust_learning_rate(
+                        model_optim, scheduler, epoch + 1, self.args, printout=False)
                     scheduler.step()
 
-            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
+            print("Epoch: {} cost time: {}".format(
+                epoch + 1, time.time() - epoch_time))
             train_loss = np.average(train_loss)
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
@@ -220,9 +247,11 @@ class Exp_Main(Exp_Basic):
                 break
 
             if self.args.lradj != 'TST':
-                adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args)
+                adjust_learning_rate(
+                    model_optim, scheduler, epoch + 1, self.args)
             else:
-                print('Updating learning rate to {}'.format(scheduler.get_last_lr()[0]))
+                print('Updating learning rate to {}'.format(
+                    scheduler.get_last_lr()[0]))
 
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
@@ -231,10 +260,11 @@ class Exp_Main(Exp_Basic):
 
     def test(self, setting, test=0):
         test_data, test_loader = self._get_data(flag='test')
-        
+
         if test:
             print('loading model')
-            self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
+            self.model.load_state_dict(torch.load(os.path.join(
+                './checkpoints/' + setting, 'checkpoint.pth')))
 
         preds = []
         trues = []
@@ -253,36 +283,43 @@ class Exp_Main(Exp_Basic):
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros_like(
+                    batch_y[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat(
+                    [batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if 'Sequence' in self.args.model:
-                            outputs,s_trend,s_season = self.model(batch_x)
+                            outputs, s_trend, s_season = self.model(batch_x)
                         elif 'Linear' in self.args.model or ('TST' in self.args.model and 'Sequence' not in self.args.model):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
                     if 'Sequence' in self.args.model:
-                            outputs,s_trend,s_season = self.model(batch_x)
+                        outputs, s_trend, s_season = self.model(batch_x)
                     elif 'Linear' in self.args.model or 'TST' in self.args.model:
-                            outputs = self.model(batch_x)
+                        outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
 
                         else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                 f_dim = -1 if self.args.features == 'MS' else 0
                 # print(outputs.shape,batch_y.shape)
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                batch_y = batch_y[:, -self.args.pred_len:,
+                                  f_dim:].to(self.device)
                 outputs = outputs.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
 
@@ -294,12 +331,14 @@ class Exp_Main(Exp_Basic):
                 inputx.append(batch_x.detach().cpu().numpy())
                 if i % 20 == 0:
                     input = batch_x.detach().cpu().numpy()
-                    gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
+                    gt = np.concatenate(
+                        (input[0, :, -1], true[0, :, -1]), axis=0)
+                    pd = np.concatenate(
+                        (input[0, :, -1], pred[0, :, -1]), axis=0)
                     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
 
         if self.args.test_flop:
-            test_params_flop((batch_x.shape[1],batch_x.shape[2]))
+            test_params_flop((batch_x.shape[1], batch_x.shape[2]))
             exit()
         preds = np.array(preds)
         trues = np.array(trues)
@@ -348,8 +387,10 @@ class Exp_Main(Exp_Basic):
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
-                dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[2]]).float().to(batch_y.device)
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                dec_inp = torch.zeros(
+                    [batch_y.shape[0], self.args.pred_len, batch_y.shape[2]]).float().to(batch_y.device)
+                dec_inp = torch.cat(
+                    [batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
@@ -357,17 +398,21 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                                outputs = self.model(
+                                    batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
                     if 'Linear' in self.args.model or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                            outputs = self.model(
+                                batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 pred = outputs.detach().cpu().numpy()  # .squeeze()
                 preds.append(pred)
 
