@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import time
+import torch.nn.functional as F
 
 plt.switch_backend('agg')
 
@@ -37,6 +38,7 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args, printout=True):
         if printout: print('Updating learning rate to {}'.format(lr))
 
 def compute_loss(s:torch.Tensor):
+    s = F.normalize(s, p=2, dim=-2)
     singular_values = torch.linalg.svdvals(s)
     epsilon = 1e-6
     log_singular_values = torch.log(torch.clamp_min(singular_values, epsilon))

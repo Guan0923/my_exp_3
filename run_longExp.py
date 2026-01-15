@@ -10,6 +10,7 @@ if __name__ == '__main__':
 
     # random seed
     parser.add_argument('--random_seed', type=int, default=2021, help='random seed')
+    parser.add_argument('--create_method', type=str, default="Linear", help='create method of matrix S')
 
     # basic config
     parser.add_argument('--is_training', type=int, required=True, default=1, help='status')

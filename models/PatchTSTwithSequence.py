@@ -73,6 +73,7 @@ class Model(nn.Module):
             self.model_trend = PatchTST_backbone_with_Sequence(
                 c_in=c_in,
                 k=k,
+                create_method=configs.create_method,
                 context_window=context_window,
                 target_window=target_window,
                 patch_len=patch_len,
@@ -111,6 +112,7 @@ class Model(nn.Module):
             self.model_res = PatchTST_backbone_with_Sequence(
                 c_in=c_in,
                 k=k,
+                create_method=configs.create_method,
                 context_window=context_window,
                 target_window=target_window,
                 patch_len=patch_len,
@@ -150,6 +152,7 @@ class Model(nn.Module):
             self.model = PatchTST_backbone_with_Sequence(
                 c_in=c_in,
                 k=k,
+                create_method=configs.create_method,
                 context_window=context_window,
                 target_window=target_window,
                 patch_len=patch_len,

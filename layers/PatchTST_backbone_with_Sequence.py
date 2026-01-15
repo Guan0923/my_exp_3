@@ -156,7 +156,6 @@ class PatchTST_backbone_with_Sequence(nn.Module):
             s = self.create_s.expand(z.shape[0],-1,-1,-1) # s: [bs x nvars x patch_len x k]
         else:
             s = self.create_s(z)  # s: [1 x nvars x patch_len x k]
-        s = F.normalize(s, p=2, dim=-2)
 
         z = torch.cat((z, s), dim=-1)  # z: [bs x nvars x patch_len x patch_num + k]
 
